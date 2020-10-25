@@ -4,7 +4,8 @@ const express = require("express")
 const bodyparser = require("body-parser")
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds=10
 
 const app=express();
 
@@ -33,37 +34,46 @@ app.get("/register",function(req,res){
 
 app.post("/register", function(req,res){
     const email=req.body.username
-    const password=md5(req.body.password)
-    const newUser = new User({
-        email: email,
-        password: password
+
+    const password=req.body.password
+    bcrypt.hash(password,saltRounds,function(err,hash){
+        const newUser = new User({
+            email: email,
+            password: hash
+        })
+        newUser.save(function(err){
+            if(!err){
+                res.render("secrets");
+            }
+            else{
+                console.log(err);
+            }
+        });
     })
-    newUser.save(function(err){
-        if(!err){
-            res.render("secrets");
-        }
-        else{
-            console.log(err);
-        }
-    });
+    
+    
 })
 
 app.post("/login",function(req,res){
     const username = req.body.username
-    const password= md5(req.body.password)
+    const password= req.body.password
+    
 
-    User.findOne({email: username},function(err,results){
-        if(!err){
-            if(results.password===password){
-                // console.log(results.password)
-                res.render("secrets")
-            }
-            else{
-                res.send("Wrong Email or Password")
-            }
+    User.findOne({email: username},function(err,foundUser){
+        if(foundUser){
+            bcrypt.compare(password, foundUser.password, function(err, result) {
+                if(result === true){
+                    // console.log(results.password)
+                    res.render("secrets")
+                }
+                else{
+                    res.send("Wrong Email or Password")
+                }
+            });
+            
         }
-        else{
-            console.log(results);
+        else if(err){
+            
             console.log(err)
         }
     })
@@ -82,6 +92,6 @@ app.post("/login",function(req,res){
 
 
 
-app.listen(3000,function(req,res){
-    console.log("Server is running on port 3000");
+app.listen(1000,function(req,res){
+    console.log("Server is running on port 1000");
 })
